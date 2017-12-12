@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Waze LiveMap Options
 // @namespace   WazeDev
-// @version     2017.12.12.001
+// @version     2017.12.12.002
 // @description Adds options to LiveMap to alter the Waze-suggested routes.
 // @author      MapOMatic
 // @include     /^https:\/\/www.waze.com\/livemap/
@@ -24,6 +24,7 @@
         'lmo-long-dirt-roads': false,
         'lmo-u-turns':true,
         'lmo-real-time-traffic':true,
+        'lmo-hide-traffic':false,
         collapsed: false
     };
     // Store the onAfterItemAdded function.  It is removed and re-added, to prevent the
@@ -61,7 +62,7 @@
                 ),
                 $('<div>', {class: 'lmo-options-container'}).css({maxHeight:_settings.collapsed ? '0px' : EXPANDED_MAX_HEIGHT}).append(
                     $('<table>', {class: 'lmo-table'}).append(
-                        [['Avoid:',['Tolls','Freeways','Ferries','Dirt roads','Long dirt roads','Difficult turns']], ['Allow:',['U-Turns']], ['Options:',['Real-time traffic']]].map(rowItems => {
+                        [['Avoid:',['Tolls','Freeways','Ferries','Dirt roads','Long dirt roads','Difficult turns']], ['Allow:',['U-Turns']], ['Options:',['Real-time traffic','Hide traffic']]].map(rowItems => {
                             return $('<tr>').append(
                                 $('<td>').append($('<span>', {id:'lmo-header-' + rowItems[0].toLowerCase().replace(/[ :]/g,''), class:'lmo-table-header-text'}).text(rowItems[0])),
                                 $('<td>').append(
@@ -95,6 +96,8 @@
                 _settings[id] = isChecked;
                 if (id === 'lmo-real-time-traffic') {
                     updateTimes();
+                } else if (id === 'lmo-hide-traffic') {
+                    W.controller._mapModel.features.enableJams(!isChecked);
                 } else {
                     if (id === 'lmo-long-dirt-roads') {
                         if (isChecked) {
@@ -178,7 +181,7 @@
     var css = [
         '.lmo-options-header { margin-top: 4px; cursor: pointer; color: #59899e; font-size: 11px; font-weight: 600; }',
         '.lmo-options-header i { margin-left: 5px; }',
-        '.lmo-options-container { max-height: 500px; overflow: hidden; transition: max-height ' + transTime + '; }', // -moz-transition: max-height ' + transTime + '; -webkit-transition: max-height ' + transTime + '; -o-transition: max-height ' + transTime + '; }',
+        '.lmo-options-container { max-height: 500px; overflow: hidden; transition: max-height ' + transTime + '; -moz-transition: max-height ' + transTime + '; -webkit-transition: max-height ' + transTime + '; -o-transition: max-height ' + transTime + '; }',
         '.lmo-table { margin-top: 4px; font-size: 12px; }',
         '.lmo-table td { padding: 4px 10px 0px 10px; }',
         '.lmo-table-header-text { margin: 0px; font-weight: 600; }',
