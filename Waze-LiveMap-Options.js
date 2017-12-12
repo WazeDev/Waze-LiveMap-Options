@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Waze LiveMap Options
 // @namespace   WazeDev
-// @version     2017.12.11.001
+// @version     2017.12.12.001
 // @description Adds options to LiveMap to alter the Waze-suggested routes.
 // @author      MapOMatic
 // @include     /^https:\/\/www.waze.com\/livemap/
@@ -14,7 +14,7 @@
 (function() {
     'use strict';
     var EXPANDED_MAX_HEIGHT = '200px';
-    var MIN_CONTAINER_HEIGHT = 786;  // If map container is shorter than this, start with options div collapsed.
+
     var _settings = {
         'lmo-tolls': false,
         'lmo-freeways': false,
@@ -24,12 +24,12 @@
         'lmo-long-dirt-roads': false,
         'lmo-u-turns':true,
         'lmo-real-time-traffic':true,
-        collapsed: $('.leaflet-container').height() < MIN_CONTAINER_HEIGHT
+        collapsed: false
     };
     // Store the onAfterItemAdded function.  It is removed and re-added, to prevent the
     // LiveMap api from moving the map to the boundaries of the routes every time
     // an option is checked.
-    var onAfterItemAdded =  W.controller._routePaths.onAfterItemAdded;
+    var _onAfterItemAdded =  W.controller._routePaths.onAfterItemAdded;
 
     function checked(id, optionalSetTo) {
         var $elem = $('#' + id);
@@ -118,7 +118,7 @@
                         // Maybe there's an event that can be hooked somewhere, but I haven't found it yet.
                         setTimeout(() => {
                             $('.lmo-control').prop("disabled", false);
-                            W.controller._routePaths.onAfterItemAdded = onAfterItemAdded;
+                            W.controller._routePaths.onAfterItemAdded = _onAfterItemAdded;
                         }, 500);
                     }
                 }
