@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Waze LiveMap Options
 // @namespace   WazeDev
-// @version     2017.12.12.002
+// @version     2017.12.12.003
 // @description Adds options to LiveMap to alter the Waze-suggested routes.
 // @author      MapOMatic
 // @include     /^https:\/\/www.waze.com\/livemap/
@@ -16,15 +16,16 @@
     var EXPANDED_MAX_HEIGHT = '200px';
 
     var _settings = {
-        'lmo-tolls': false,
-        'lmo-freeways': false,
-        'lmo-ferries': false,
-        'lmo-difficult-turns':false,
-        'lmo-dirt-roads': true,
-        'lmo-long-dirt-roads': false,
-        'lmo-u-turns':true,
-        'lmo-real-time-traffic':true,
-        'lmo-hide-traffic':false,
+        'lmo-tolls': {checked:false},
+        'lmo-freeways': {checked:false},
+        'lmo-ferries': {checked:false},
+        'lmo-difficult-turns':{checked:false},
+        'lmo-dirt-roads': {checked:true},
+        'lmo-long-dirt-roads': {checked:false},
+        'lmo-u-turns':{checked:false, opposite:true},
+        'lmo-hov':{checked:false, opposite:true},
+        'lmo-real-time-traffic':{checked:true},
+        'lmo-hide-traffic':{checked:false},
         collapsed: false
     };
     // Store the onAfterItemAdded function.  It is removed and re-added, to prevent the
@@ -62,7 +63,7 @@
                 ),
                 $('<div>', {class: 'lmo-options-container'}).css({maxHeight:_settings.collapsed ? '0px' : EXPANDED_MAX_HEIGHT}).append(
                     $('<table>', {class: 'lmo-table'}).append(
-                        [['Avoid:',['Tolls','Freeways','Ferries','Dirt roads','Long dirt roads','Difficult turns']], ['Allow:',['U-Turns']], ['Options:',['Real-time traffic','Hide traffic']]].map(rowItems => {
+                        [['Avoid:',['Tolls','Freeways','Ferries','HOV','Dirt roads','Long dirt roads','Difficult turns','U-Turns']], ['Options:',['Real-time traffic','Hide traffic']]].map(rowItems => {
                             return $('<tr>').append(
                                 $('<td>').append($('<span>', {id:'lmo-header-' + rowItems[0].toLowerCase().replace(/[ :]/g,''), class:'lmo-table-header-text'}).text(rowItems[0])),
                                 $('<td>').append(
@@ -70,7 +71,7 @@
                                         var idName = text.toLowerCase().replace(/ /g, '-');
                                         var id = 'lmo-' + idName;
                                         return $('<span>', {class:'lmo-control-container'}).append(
-                                            $('<input>', {id:id, type:'checkbox', class:'lmo-control'}).prop('checked',_settings[id]), $('<label>', {for:id}).text(text)
+                                            $('<input>', {id:id, type:'checkbox', class:'lmo-control'}).prop('checked',_settings[id].checked), $('<label>', {for:id}).text(text)
                                         );
                                     })
                                 )
@@ -79,7 +80,6 @@
                     )
                 )
             );
-            $('#lmo-header-allow').css({color:'#393'});
             $('#lmo-header-avoid').css({color:'#c55'});
 
             // Set up events
@@ -93,7 +93,7 @@
             $('.lmo-control').change(function() {
                 var id = this.id;
                 var isChecked = checked(id);
-                _settings[id] = isChecked;
+                _settings[id].checked = isChecked;
                 if (id === 'lmo-real-time-traffic') {
                     updateTimes();
                 } else if (id === 'lmo-hide-traffic') {
@@ -102,12 +102,12 @@
                     if (id === 'lmo-long-dirt-roads') {
                         if (isChecked) {
                             checked('lmo-dirt-roads', false);
-                            _settings['lmo-dirt-roads'] = false;
+                            _settings['lmo-dirt-roads'].checked = false;
                         }
                     } else if (id === 'lmo-dirt-roads') {
                         if (isChecked) {
                             checked('lmo-long-dirt-roads', false);
-                            _settings['lmo-long-dirt-roads'] = false;
+                            _settings['lmo-long-dirt-roads'].checked = false;
                         }
                     }
                     var routeSearch = W.controller._routeSearch;
@@ -163,12 +163,15 @@
             // Remove all options from the request (everything after '&options=')
             var baseData = request.data.replace(request.data.match(/&options=(.*)/)[1],'');
             var options = [];
-            [['tolls','AVOID_TOLL_ROADS'],['freeways','AVOID_PRIMARIES'],['ferries','AVOID_FERRIES'],['difficult-turns','AVOID_DANGEROUS_TURNS'],['u-turns','ALLOW_UTURNS']].forEach(optionInfo => {
-                options.push(optionInfo[1] + ':' + (checked('lmo-' + optionInfo[0]) ? 't' : 'f'));
+            [['tolls','AVOID_TOLL_ROADS'],['freeways','AVOID_PRIMARIES'],['ferries','AVOID_FERRIES'],['difficult-turns','AVOID_DANGEROUS_TURNS'],['u-turns','ALLOW_UTURNS'],['hov','ADD_HOV_ROUTES']].forEach(optionInfo => {
+                var id = 'lmo-' + optionInfo[0];
+                var enableOption = checked(id);
+                if (_settings[id].opposite) enableOption = !enableOption;
+                options.push(optionInfo[1] + ':' + (enableOption ? 't' : 'f'));
             });
             if (checked('lmo-long-dirt-roads')) {
                 options.push('AVOID_LONG_TRAILS:t');
-            } else if (checked('lmo-dirt-trails')) {
+            } else if (checked('lmo-dirt-roads')) {
                 options.push('AVOID_TRAILS:t');
             } else {
                 options.push('AVOID_LONG_TRAILS:f');
