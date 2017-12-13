@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Waze LiveMap Options
 // @namespace   WazeDev
-// @version     2017.12.12.003
+// @version     2017.12.12.004
 // @description Adds options to LiveMap to alter the Waze-suggested routes.
 // @author      MapOMatic
 // @include     /^https:\/\/www.waze.com\/livemap/
@@ -81,6 +81,7 @@
                 )
             );
             $('#lmo-header-avoid').css({color:'#c55'});
+            $('label[for="lmo-u-turns"').attr('title','Note: this is not an available setting in the app');
 
             // Set up events
             $('.lmo-options-header').click(function() {
