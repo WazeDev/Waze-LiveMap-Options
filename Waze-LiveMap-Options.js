@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Waze LiveMap Options
 // @namespace   WazeDev
-// @version     2017.12.12.005
+// @version     2017.12.17.001
 // @description Adds options to LiveMap to alter the Waze-suggested routes.
 // @author      MapOMatic
 // @include     /^https:\/\/www.waze.com\/livemap/
@@ -20,8 +20,8 @@
         'lmo-freeways': {checked:false},
         'lmo-ferries': {checked:false},
         'lmo-difficult-turns':{checked:false},
-        'lmo-dirt-roads': {checked:true},
-        'lmo-long-dirt-roads': {checked:false},
+        'lmo-unpaved-roads': {checked:true},
+        'lmo-long-unpaved-roads': {checked:false},
         'lmo-u-turns':{checked:false, opposite:true},
         'lmo-hov':{checked:false, opposite:true},
         'lmo-real-time-traffic':{checked:true},
@@ -63,7 +63,7 @@
                 ),
                 $('<div>', {class: 'lmo-options-container'}).css({maxHeight:_settings.collapsed ? '0px' : EXPANDED_MAX_HEIGHT}).append(
                     $('<table>', {class: 'lmo-table'}).append(
-                        [['Avoid:',['Tolls','Freeways','Ferries','HOV','Dirt roads','Long dirt roads','Difficult turns','U-Turns']], ['Options:',['Real-time traffic','Hide traffic']]].map(rowItems => {
+                        [['Avoid:',['Tolls','Freeways','Ferries','HOV','Unpaved roads','Long unpaved roads','Difficult turns','U-Turns']], ['Options:',['Real-time traffic','Hide traffic']]].map(rowItems => {
                             return $('<tr>').append(
                                 $('<td>').append($('<span>', {id:'lmo-header-' + rowItems[0].toLowerCase().replace(/[ :]/g,''), class:'lmo-table-header-text'}).text(rowItems[0])),
                                 $('<td>').append(
@@ -100,15 +100,15 @@
                 } else if (id === 'lmo-hide-traffic') {
                     W.controller._mapModel.features.enableJams(!isChecked);
                 } else {
-                    if (id === 'lmo-long-dirt-roads') {
+                    if (id === 'lmo-long-unpaved-roads') {
                         if (isChecked) {
-                            checked('lmo-dirt-roads', false);
-                            _settings['lmo-dirt-roads'].checked = false;
+                            checked('lmo-unpaved-roads', false);
+                            _settings['lmo-unpaved-roads'].checked = false;
                         }
-                    } else if (id === 'lmo-dirt-roads') {
+                    } else if (id === 'lmo-unpaved-roads') {
                         if (isChecked) {
-                            checked('lmo-long-dirt-roads', false);
-                            _settings['lmo-long-dirt-roads'].checked = false;
+                            checked('lmo-long-unpaved-roads', false);
+                            _settings['lmo-long-unpaved-roads'].checked = false;
                         }
                     }
                     var routeSearch = W.controller._routeSearch;
@@ -170,9 +170,9 @@
                 if (_settings[id].opposite) enableOption = !enableOption;
                 options.push(optionInfo[1] + ':' + (enableOption ? 't' : 'f'));
             });
-            if (checked('lmo-long-dirt-roads')) {
+            if (checked('lmo-long-unpaved-roads')) {
                 options.push('AVOID_LONG_TRAILS:t');
-            } else if (checked('lmo-dirt-roads')) {
+            } else if (checked('lmo-unpaved-roads')) {
                 options.push('AVOID_TRAILS:t');
             } else {
                 options.push('AVOID_LONG_TRAILS:f');
