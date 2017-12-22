@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Waze LiveMap Options
 // @namespace   WazeDev
-// @version     2017.12.22.001
+// @version     2017.12.22.002
 // @description Adds options to LiveMap to alter the Waze-suggested routes.
 // @author      MapOMatic
 // @include     /^https:\/\/www.waze.com\/livemap/
@@ -77,7 +77,11 @@
         }
 
         var diff = tsel - tnow;
-        if (diff < -5040) diff += 7 * 1440;
+        if (diff < -3.5 * 1440)
+            diff += 7 * 1440;
+        else if (diff > 3.5 * 1440)
+            diff -= 7 * 1440;
+
         return diff;
     }
 
