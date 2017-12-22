@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Waze LiveMap Options
 // @namespace   WazeDev
-// @version     2017.12.17.001
+// @version     2017.12.22.001
 // @description Adds options to LiveMap to alter the Waze-suggested routes.
 // @author      MapOMatic
 // @include     /^https:\/\/www.waze.com\/livemap/
@@ -26,6 +26,8 @@
         'lmo-hov':{checked:false, opposite:true},
         'lmo-real-time-traffic':{checked:true},
         'lmo-hide-traffic':{checked:false},
+        'lmo-day': 'today',
+        'lmo-hour': 'now',
         collapsed: false
     };
     // Store the onAfterItemAdded function.  It is removed and re-added, to prevent the
@@ -42,6 +44,43 @@
         }
     }
 
+    function getDateTimeOffset() {
+        var hour = $('#lmo-hour').val();
+        var day  = $('#lmo-day').val();
+        if (hour === '---') hour = 'now';
+        if (day  === '---') day = 'today';
+        if (hour === '') hour = 'now';
+        if (day  === '') day = 'today';
+
+        var t = new Date();
+        var thour = (t.getHours() * 60) + t.getMinutes();
+        var tnow = (t.getDay() * 1440) + thour;
+        var tsel = tnow;
+
+        if (hour === 'now') {
+            if (day === "0")     tsel = (parseInt(day) * 1440) + thour;
+            if (day === "1")     tsel = (parseInt(day) * 1440) + thour;
+            if (day === "2")     tsel = (parseInt(day) * 1440) + thour;
+            if (day === "3")     tsel = (parseInt(day) * 1440) + thour;
+            if (day === "4")     tsel = (parseInt(day) * 1440) + thour;
+            if (day === "5")     tsel = (parseInt(day) * 1440) + thour;
+            if (day === "6")     tsel = (parseInt(day) * 1440) + thour;
+        } else {
+            if (day === "today") tsel = (t.getDay()    * 1440) + parseInt(hour);
+            if (day === "0")     tsel = (parseInt(day) * 1440) + parseInt(hour);
+            if (day === "1")     tsel = (parseInt(day) * 1440) + parseInt(hour);
+            if (day === "2")     tsel = (parseInt(day) * 1440) + parseInt(hour);
+            if (day === "3")     tsel = (parseInt(day) * 1440) + parseInt(hour);
+            if (day === "4")     tsel = (parseInt(day) * 1440) + parseInt(hour);
+            if (day === "5")     tsel = (parseInt(day) * 1440) + parseInt(hour);
+            if (day === "6")     tsel = (parseInt(day) * 1440) + parseInt(hour);
+        }
+
+        var diff = tsel - tnow;
+        if (diff < -5040) diff += 7 * 1440;
+        return diff;
+    }
+
     function updateTimes() {
         var realTimeTraffic = checked('lmo-real-time-traffic');
         var $routeTimes = $('.routes .route-time');
@@ -51,6 +90,16 @@
             var contents = $routeTime.contents();
             contents[contents.length-1].remove();
             $routeTime.append(' ' + time);
+        }
+    }
+
+    function fetchRoutes() {
+        var routeSearch = W.controller._routeSearch;
+        if (routeSearch.to.address.attributes.latlng && routeSearch.from.address.attributes.latlng) {//($('div#origin input.query').val() && $('div#destination input.query').val()) {
+            $('.lmo-control').prop('disabled',true);
+            // HACK - Temporarily remove the onAfterItemAdded function, to prevent map from moving.
+            W.controller._routePaths.onAfterItemAdded = null;
+            routeSearch.fetchRoutes();
         }
     }
 
@@ -64,9 +113,10 @@
                 $('<div>', {class: 'lmo-options-container'}).css({maxHeight:_settings.collapsed ? '0px' : EXPANDED_MAX_HEIGHT}).append(
                     $('<table>', {class: 'lmo-table'}).append(
                         [['Avoid:',['Tolls','Freeways','Ferries','HOV','Unpaved roads','Long unpaved roads','Difficult turns','U-Turns']], ['Options:',['Real-time traffic','Hide traffic']]].map(rowItems => {
-                            return $('<tr>').append(
-                                $('<td>').append($('<span>', {id:'lmo-header-' + rowItems[0].toLowerCase().replace(/[ :]/g,''), class:'lmo-table-header-text'}).text(rowItems[0])),
-                                $('<td>').append(
+                            var rowID = rowItems[0].toLowerCase().replace(/[ :]/g,'');
+                            return $('<tr>', {id:'lmo-row-' + rowID}).append(
+                                $('<td>').append($('<span>', {id:'lmo-header-' + rowID, class:'lmo-table-header-text'}).text(rowItems[0])),
+                                $('<td>', {class: 'lmo-settings-cell'}).append(
                                     rowItems[1].map((text) => {
                                         var idName = text.toLowerCase().replace(/ /g, '-');
                                         var id = 'lmo-' + idName;
@@ -83,6 +133,36 @@
             $('#lmo-header-avoid').css({color:'#c55'});
             $('label[for="lmo-u-turns"').attr('title','Note: this is not an available setting in the app');
 
+            var timeArray = [['Now','now']];
+            for (var i=0; i<48; i++) {
+                var t = i * 30;
+                var min = t % 60;
+                var hr = Math.floor(t / 60);
+                var str = (hr < 10 ? ('0') : '') + hr + ':' + (min === 0 ? '00' : min);
+                timeArray.push([str, t.toString()]);
+            }
+            $('#lmo-row-options td.lmo-settings-cell').append(
+                $('<div>').append(
+                    $('<label>', {for:'lmo-day', style:'font-weight: normal;'}).text('Day'),
+                    $('<select>', {id: 'lmo-day', class:'lmo-control', style:'margin-left: 4px; margin-right: 8px; padding: 0px; height: 22px;'}).append(
+                        [
+                            ['Today','today'],
+                            ['Monday','1'],
+                            ['Tuesday','2'],
+                            ['Wednesday','3'],
+                            ['Thursday','4'],
+                            ['Friday','5'],
+                            ['Saturday','6'],
+                            ['Sunday','0']
+                        ].map(val => $('<option>', {value:val[1]}).text(val[0]))
+                    ),
+                    $('<label>', {for:'lmo-hour', style:'font-weight: normal;'}).text('Time'),
+                    $('<select>', {id: 'lmo-hour', class:'lmo-control', style:'margin-left: 4px; margin-right: 8px; padding: 0px; height: 22px;'}).append(
+                        timeArray.map(val => $('<option>', {value:val[1]}).text(val[0]))
+                    )
+                )
+            );
+
             // Set up events
             $('.lmo-options-header').click(function() {
                 var $container = $('.lmo-options-container');
@@ -93,37 +173,28 @@
             });
             $('.lmo-control').change(function() {
                 var id = this.id;
-                var isChecked = checked(id);
-                _settings[id].checked = isChecked;
-                if (id === 'lmo-real-time-traffic') {
-                    updateTimes();
-                } else if (id === 'lmo-hide-traffic') {
-                    W.controller._mapModel.features.enableJams(!isChecked);
+                if (id === 'lmo-hour' || id === 'lmo-day') {
+                    fetchRoutes();
                 } else {
-                    if (id === 'lmo-long-unpaved-roads') {
-                        if (isChecked) {
-                            checked('lmo-unpaved-roads', false);
-                            _settings['lmo-unpaved-roads'].checked = false;
+                    var isChecked = checked(id);
+                    _settings[id].checked = isChecked;
+                    if (id === 'lmo-real-time-traffic') {
+                        updateTimes();
+                    } else if (id === 'lmo-hide-traffic') {
+                        W.controller._mapModel.features.enableJams(!isChecked);
+                    } else {
+                        if (id === 'lmo-long-unpaved-roads') {
+                            if (isChecked) {
+                                checked('lmo-unpaved-roads', false);
+                                _settings['lmo-unpaved-roads'].checked = false;
+                            }
+                        } else if (id === 'lmo-unpaved-roads') {
+                            if (isChecked) {
+                                checked('lmo-long-unpaved-roads', false);
+                                _settings['lmo-long-unpaved-roads'].checked = false;
+                            }
                         }
-                    } else if (id === 'lmo-unpaved-roads') {
-                        if (isChecked) {
-                            checked('lmo-long-unpaved-roads', false);
-                            _settings['lmo-long-unpaved-roads'].checked = false;
-                        }
-                    }
-                    var routeSearch = W.controller._routeSearch;
-                    if (routeSearch.to.address.attributes.latlng && routeSearch.from.address.attributes.latlng) {//($('div#origin input.query').val() && $('div#destination input.query').val()) {
-                        $('.lmo-control').prop('disabled',true);
-                        // Temporarily remove the onAfterItemAdded function, to prevent map from moving.
-                        W.controller._routePaths.onAfterItemAdded = null;
-                        routeSearch.fetchRoutes();
-                        // This pause is needed to prevent clicking other options too quickly, which causes a "Whoa! Something went wrong" error.
-                        // I tried using the .then() function of the returned promise from fetchRoutes, but that didn't seem to work.
-                        // Maybe there's an event that can be hooked somewhere, but I haven't found it yet.
-                        setTimeout(() => {
-                            $('.lmo-control').prop("disabled", false);
-                            W.controller._routePaths.onAfterItemAdded = _onAfterItemAdded;
-                        }, 500);
+                        fetchRoutes();
                     }
                 }
             });
@@ -135,17 +206,28 @@
             for (var i = 0; i < mutation.addedNodes.length; i++) {
                 var addedNode = mutation.addedNodes[i];
                 if (addedNode.nodeType === Node.ELEMENT_NODE){
+                    var $addedNode = $(addedNode);
                     if (addedNode.className === 'search-forms') {
                         addOptions();
-                    } else if ($(addedNode).hasClass('route-info')) {
+                    } else if ($addedNode.hasClass('route-info')) {
                         updateTimes();
+                    } else if ($addedNode.is('div.routing-time')) {
+                        $addedNode.remove();
                     }
                 }
             }
+            mutation.removedNodes.forEach(nd => {
+                if ($(nd).hasClass('s-loading')) {
+                    $('.lmo-control').prop("disabled", false);
+                    W.controller._routePaths.onAfterItemAdded = _onAfterItemAdded;
+                }
+            });
         });
     });
-    addOptions();
     observer.observe($('.leaflet-top')[0], { childList: true, subtree: true });
+
+    $('div.routing-time').remove();
+    addOptions();
 
     function getRouteTime(routeIdx, realTimeTraffic) {
         var sec = 0;
@@ -177,6 +259,7 @@
             } else {
                 options.push('AVOID_LONG_TRAILS:f');
             }
+            baseData = baseData.replace(/&at=0/,'&at=' + getDateTimeOffset());
             request.data = baseData + encodeURIComponent(options.join(','));
         }
     });
