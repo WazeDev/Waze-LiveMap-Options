@@ -1,11 +1,12 @@
 // ==UserScript==
-// @name        Waze LiveMap Options
-// @namespace   WazeDev
-// @version     2018.05.04.001
-// @description Adds options to LiveMap to alter the Waze-suggested routes.
-// @author      MapOMatic
-// @include     /^https:\/\/www.waze.com\/.*livemap/
-// @license     GNU GPL v3
+// @name            Waze LiveMap Options
+// @namespace       WazeDev
+// @version         2018.07.21.001
+// @description     Adds options to LiveMap to alter the Waze-suggested routes.
+// @author          MapOMatic
+// @include         /^https:\/\/www.waze.com\/.*livemap/
+// @contributionURL https://github.com/WazeDev/Thank-The-Authors
+// @license         GNU GPL v3
 // ==/UserScript==
 
 /* global W */
