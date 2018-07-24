@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            Waze LiveMap Options
 // @namespace       WazeDev
-// @version         2018.07.24.001
+// @version         2018.07.24.002
 // @description     Adds options to LiveMap to alter the Waze-suggested routes.
 // @author          MapOMatic
 // @include         /^https:\/\/www.waze.com\/.*livemap/
@@ -40,7 +40,6 @@
         'lmo-long-unpaved-roads': {checked:false},
         'lmo-u-turns':{checked:false, opposite:true},
         'lmo-hov':{checked:false, opposite:true},
-        'lmo-real-time-traffic':{checked:true},
         'lmo-hide-traffic':{checked:false},
         'lmo-day': 'today',
         'lmo-hour': 'now',
@@ -97,11 +96,19 @@
         return diff;
     }
 
+    function getRouteTime(routeIdx) {
+        let sec = W.app.map.routing._state.routes[routeIdx].getSeconds()
+        let hours = Math.floor(sec/3600);
+        sec -= hours * 3600;
+        let min = Math.floor(sec/60);
+        sec -= min * 60;
+        return (hours > 0 ? hours + ' h ' : '') + (min > 0 ? min + ' min ' : '') + sec + ' sec';
+    }
+
     function updateTimes() {
-        let realTimeTraffic = checked('lmo-real-time-traffic');
-        let $routeTimes = $('.routes .route-time');
+        let $routeTimes = $('.wm-route-item__time');
         for (let idx=0; idx<$routeTimes.length; idx++) {
-            let time = getRouteTime(idx, realTimeTraffic);
+            let time = getRouteTime(idx);
             let $routeTime = $routeTimes.eq(idx);
             let contents = $routeTime.contents();
             contents[contents.length-1].remove();
@@ -129,7 +136,7 @@
                 ),
                 $('<div>', {class: 'lmo-options-container'}).css({maxHeight:_settings.collapsed ? '0px' : EXPANDED_MAX_HEIGHT}).append(
                     $('<table>', {class: 'lmo-table'}).append(
-                        [['Avoid:',['Tolls','Freeways','Ferries','HOV','Unpaved roads','Long unpaved roads','Difficult turns','U-Turns']], ['Options:',['Real-time traffic','Hide traffic']]].map(rowItems => {
+                        [['Avoid:',['Tolls','Freeways','Ferries','HOV','Unpaved roads','Long unpaved roads','Difficult turns','U-Turns']], ['Options:',['Hide traffic']]].map(rowItems => {
                             let rowID = rowItems[0].toLowerCase().replace(/[ :]/g,'');
                             return $('<tr>', {id:'lmo-row-' + rowID}).append(
                                 $('<td>', {class: 'lmo-header-cell'}).append($('<span>', {id:'lmo-header-' + rowID, class:'lmo-table-header-text'}).text(rowItems[0])),
@@ -195,9 +202,7 @@
                 } else {
                     let isChecked = checked(id);
                     _settings[id].checked = isChecked;
-                    if (id === 'lmo-real-time-traffic') {
-                        updateTimes();
-                    } else if (id === 'lmo-hide-traffic') {
+                    if (id === 'lmo-hide-traffic') {
                         if (isChecked) {
                             W.app.geoRssLayer._jamsLayer.remove();
                         } else {
@@ -220,18 +225,6 @@
                 }
             });
         }
-    }
-
-    function getRouteTime(routeIdx, realTimeTraffic) {
-        let sec = 0;
-        W.controller._routes.models[routeIdx].attributes.results.forEach(result => {
-            sec += realTimeTraffic ? result.crossTime : result.crossTimeWithoutRealTime;
-        });
-        let hours = Math.floor(sec/3600);
-        sec -= hours * 3600;
-        let min = Math.floor(sec/60);
-        sec -= min * 60;
-        return (hours > 0 ? hours + 'h ' : '') + (min > 0 ? min + 'm ' : '') + sec + 's';
     }
 
     function installHttpRequestInterceptor() {
@@ -273,9 +266,16 @@
     }
 
     function init() {
+        // Insert CSS styling.
         $('head').append( $('<style>', {type:'text/css'}).html(CSS) );
+
+        // Add the xmlhttp request interceptor, so we can insert our own options into the routing requests.
         installHttpRequestInterceptor();
+
+        // Add all of the DOM stuff for this script.
         addOptions();
+
+        // Watch for the "waiting" spinner so we can disable and enable things while LM is fetching routes.
         let observer = new MutationObserver(mutations => {
             mutations.forEach(mutation => {
                 if (mutation.attributeName === 'class') {
@@ -289,8 +289,25 @@
         });
         observer.observe($('.wm-route-search__spinner')[0], { childList: false, subtree: false, attributes: true });
 
+
+        // Watch for routes being displayed, so we can update the displayed times.
+        observer = new MutationObserver(mutations => {
+            mutations.forEach(mutation => {
+                for (var i = 0; i < mutation.addedNodes.length; i++) {
+                    let addedNode = mutation.addedNodes[i];
+                    if (addedNode.nodeType === Node.ELEMENT_NODE && $(addedNode).hasClass('wm-route-list__routes')) {
+                        updateTimes();
+                    }
+                }
+            });
+        });
+        observer.observe($('.wm-route-list')[0], { childList: true, subtree: true });
+
         // Remove the div that contains the native LiveMap options for setting departure time.
         $('div.wm-route-schedule').remove();
+
+        // Remove the routing tip (save some space).
+        $('div.wm-routing__tip').remove();
 
         // Store the fitBounds function.  It is removed and re-added, to prevent the
         // LiveMap api from moving the map to the boundaries of the routes every time
