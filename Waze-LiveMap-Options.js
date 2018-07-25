@@ -1,13 +1,14 @@
 // ==UserScript==
 // @name            Waze LiveMap Options
 // @namespace       WazeDev
-// @version         2018.07.24.002
+// @version         2018.07.25.001
 // @description     Adds options to LiveMap to alter the Waze-suggested routes.
 // @author          MapOMatic
 // @include         /^https:\/\/www.waze.com\/.*livemap/
 // @contributionURL https://github.com/WazeDev/Thank-The-Authors
 // @license         GNU GPL v3
 // @grant           none
+// @noframes
 // ==/UserScript==
 
 /* global W */
@@ -97,7 +98,7 @@
     }
 
     function getRouteTime(routeIdx) {
-        let sec = W.app.map.routing._state.routes[routeIdx].getSeconds()
+        let sec = W.app.map.routing._state.routes[routeIdx].getSeconds();
         let hours = Math.floor(sec/3600);
         sec -= hours * 3600;
         let min = Math.floor(sec/60);
