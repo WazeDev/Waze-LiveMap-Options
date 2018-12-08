@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            Waze LiveMap Options
 // @namespace       WazeDev
-// @version         2018.08.19.001
+// @version         2018.12.07.001
 // @description     Adds options to LiveMap to alter the Waze-suggested routes.
 // @author          MapOMatic
 // @include         /^https:\/\/www.waze.com\/.*livemap/
@@ -19,9 +19,9 @@
     const EXPANDED_MAX_HEIGHT = '200px';
     const TRANS_TIME = '0.2s';
     const CSS = [
-        '.lmo-options-header { margin-top: 4px; cursor: pointer; color: #59899e; font-size: 11px; font-weight: 600; }',
+        '.lmo-options-header { padding-left: 27px; margin-top: 4px; cursor: pointer; color: #59899e; font-size: 11px; font-weight: 600; }',
         '.lmo-options-header i { margin-left: 5px; }',
-        '.lmo-options-container { max-height: 500px; overflow: hidden; transition: max-height ' + TRANS_TIME + '; -moz-transition: max-height ' + TRANS_TIME + '; -webkit-transition: max-height ' + TRANS_TIME + '; -o-transition: max-height ' + TRANS_TIME + '; }',
+        '.lmo-options-container { padding-left: 27px; padding-right: 12px; max-height: 500px; overflow: hidden; transition: max-height ' + TRANS_TIME + '; -moz-transition: max-height ' + TRANS_TIME + '; -webkit-transition: max-height ' + TRANS_TIME + '; -o-transition: max-height ' + TRANS_TIME + '; }',
         '.lmo-table { margin-top: 4px; font-size: 12px; border-collapse: collapse; }',
         '.lmo-table td { padding: 4px 10px 4px 10px; border: 1px solid #ddd; border-radius: 6px; }',
         '.lmo-table-header-text { margin: 0px; font-weight: 600; }',
@@ -98,7 +98,7 @@
     }
 
     function getRouteTime(routeIdx) {
-        let sec = W.app.map.routing.store.getState().routes[routeIdx].getSeconds();
+        let sec = W.app.routing.routing.store.state.routes[routeIdx].seconds;
         let hours = Math.floor(sec/3600);
         sec -= hours * 3600;
         let min = Math.floor(sec/60);
@@ -119,12 +119,12 @@
 
     function fetchRoutes() {
         // Does nothing if "from" and "to" haven't been specified yet.
-        if (W.app.map.routing.store.getState().from && W.app.map.routing.store.getState().to) {
+        if (W.app.store.state.routing && W.app.store.state.routing.from && W.app.store.state.routing.to) {
             // HACK - Temporarily remove the onAfterItemAdded function, to prevent map from moving.
             W.app.map.fitBounds = function() {};
 
             // Trigger the route search.
-            W.app.map.routing.findRoutes();
+            W.app.routing.routing.findRoutes()
         }
     }
 
