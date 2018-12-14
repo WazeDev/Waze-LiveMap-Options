@@ -13,6 +13,7 @@
 
 /* global W */
 /* global Node */
+/* global $ */
 
 (function() {
     'use strict';
@@ -46,6 +47,14 @@
         'lmo-hour': 'now',
         collapsed: false
     };
+
+    /* NOTES
+    W.app.map.getGeoEnv() gets the server (na, row,
+
+    var l = navigator.language || navigator.userLanguage;
+    var url = `https://www.waze.com/row-Descartes/app/Features?language=${l}&bbox=${b._southWest.lng}%2C${b._southWest.lat}%2C${b._northEast.lng}%2C${b._northEast.lat}&restrictedAreas=true`;
+    jQuery.getJSON(url, {}, res => { })  // res.countries.objects ... those contain the .restrictionSubscriptions JSON object
+    */
 
     function checked(id, optionalSetTo) {
         let $elem = $('#' + id);
@@ -266,54 +275,76 @@
         })(fetch);
     }
 
+    function getPassesAsync() {
+        return new Promise((resolve, reject) => {
+            let geo = W.app.map.getGeoEnv();
+            let b = W.app.map.getBounds();
+            let l = navigator.language || navigator.userLanguage;
+            let url = `https://www.waze.com/${geo==='na'?'':geo+'-'}Descartes/app/Features?language=${l}&bbox=${b._southWest.lng}%2C${b._southWest.lat}%2C${b._northEast.lng}%2C${b._northEast.lat}`;
+
+            $.getJSON(url, res => {
+                let passes = {};
+                res.countries.objects.forEach(c => {
+                    Object.keys(c.restrictionSubscriptions).forEach(key => (passes[key] = c.restrictionSubscriptions[key]))
+                });
+                resolve(passes);
+            });
+        });
+    }
+
     function init() {
-        // Insert CSS styling.
-        $('head').append( $('<style>', {type:'text/css'}).html(CSS) );
+        getPassesAsync().then(passes => {
 
-        // Add the xmlhttp request interceptor, so we can insert our own options into the routing requests.
-        installHttpRequestInterceptor();
+            debugger;
 
-        // Add all of the DOM stuff for this script.
-        addOptions();
+            // Insert CSS styling.
+            $('head').append( $('<style>', {type:'text/css'}).html(CSS) );
 
-        // Watch for the "waiting" spinner so we can disable and enable things while LM is fetching routes.
-        let observer = new MutationObserver(mutations => {
-            mutations.forEach(mutation => {
-                if (mutation.attributeName === 'class') {
-                    let waitingSpinner = !$(mutation.target).hasClass('wm-hidden');
-                    $('.lmo-control').prop('disabled', waitingSpinner);
-                    if (!waitingSpinner) {
-                        W.app.map.fitBounds = _fitBounds;
+            // Add the xmlhttp request interceptor, so we can insert our own options into the routing requests.
+            installHttpRequestInterceptor();
+
+            // Add all of the DOM stuff for this script.
+            addOptions();
+
+            // Watch for the "waiting" spinner so we can disable and enable things while LM is fetching routes.
+            let observer = new MutationObserver(mutations => {
+                mutations.forEach(mutation => {
+                    if (mutation.attributeName === 'class') {
+                        let waitingSpinner = !$(mutation.target).hasClass('wm-hidden');
+                        $('.lmo-control').prop('disabled', waitingSpinner);
+                        if (!waitingSpinner) {
+                            W.app.map.fitBounds = _fitBounds;
+                        }
                     }
-                }
+                });
             });
-        });
-        observer.observe($('.wm-route-search__spinner')[0], { childList: false, subtree: false, attributes: true });
+            observer.observe($('.wm-route-search__spinner')[0], { childList: false, subtree: false, attributes: true });
 
 
-        // Watch for routes being displayed, so we can update the displayed times.
-        observer = new MutationObserver(mutations => {
-            mutations.forEach(mutation => {
-                for (var i = 0; i < mutation.addedNodes.length; i++) {
-                    let addedNode = mutation.addedNodes[i];
-                    if (addedNode.nodeType === Node.ELEMENT_NODE && $(addedNode).hasClass('wm-route-list__routes')) {
-                        updateTimes();
+            // Watch for routes being displayed, so we can update the displayed times.
+            observer = new MutationObserver(mutations => {
+                mutations.forEach(mutation => {
+                    for (var i = 0; i < mutation.addedNodes.length; i++) {
+                        let addedNode = mutation.addedNodes[i];
+                        if (addedNode.nodeType === Node.ELEMENT_NODE && $(addedNode).hasClass('wm-route-list__routes')) {
+                            updateTimes();
+                        }
                     }
-                }
+                });
             });
+            observer.observe($('.wm-route-list')[0], { childList: true, subtree: true });
+
+            // Remove the div that contains the native LiveMap options for setting departure time.
+            $('div.wm-route-schedule').remove();
+
+            // Remove the routing tip (save some space).
+            $('div.wm-routing__tip').remove();
+
+            // Store the fitBounds function.  It is removed and re-added, to prevent the
+            // LiveMap api from moving the map to the boundaries of the routes every time
+            // an option is checked.
+            _fitBounds = W.app.map.fitBounds;
         });
-        observer.observe($('.wm-route-list')[0], { childList: true, subtree: true });
-
-        // Remove the div that contains the native LiveMap options for setting departure time.
-        $('div.wm-route-schedule').remove();
-
-        // Remove the routing tip (save some space).
-        $('div.wm-routing__tip').remove();
-
-        // Store the fitBounds function.  It is removed and re-added, to prevent the
-        // LiveMap api from moving the map to the boundaries of the routes every time
-        // an option is checked.
-        _fitBounds =  W.app.map.fitBounds;
     }
 
     // Run the script.
