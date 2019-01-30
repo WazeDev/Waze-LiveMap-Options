@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name            Waze LiveMap Options
 // @namespace       WazeDev
-// @version         2018.12.07.001
+// @version         2019.01.30.001
 // @description     Adds options to LiveMap to alter the Waze-suggested routes.
 // @author          MapOMatic
 // @include         /^https:\/\/www.waze.com\/.*livemap/
 // @contributionURL https://github.com/WazeDev/Thank-The-Authors
+// @require         https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js
 // @license         GNU GPL v3
 // @grant           none
 // @noframes
@@ -14,7 +15,9 @@
 /* global W */
 /* global Node */
 
-(function() {
+var jq331 = jQuery.noConflict(true);
+
+(function($) {
     'use strict';
     const EXPANDED_MAX_HEIGHT = '200px';
     const TRANS_TIME = '0.2s';
@@ -98,7 +101,7 @@
     }
 
     function getRouteTime(routeIdx) {
-        let sec = W.app.routing.routing.store.state.routes[routeIdx].seconds;
+        let sec = W.app.routing.controller.store.state.routes[routeIdx].seconds;
         let hours = Math.floor(sec/3600);
         sec -= hours * 3600;
         let min = Math.floor(sec/60);
@@ -124,13 +127,13 @@
             W.app.map.fitBounds = function() {};
 
             // Trigger the route search.
-            W.app.routing.routing.findRoutes()
+            W.app.routing.controller.findRoutes()
         }
     }
 
     function addOptions() {
         if (!$('#lmo-table').length) {
-            $('.wm-route-search').after(
+            $('.wm-routing__top').after(
                 $('<div>', {class:'lmo-options-header'}).append(
                     $('<span>').text('Change routing options'),
                     $('<i>', {class:'fa fa.fa-angle-down fa.fa-angle-up'}).addClass(_settings.collapsed ? 'fa-angle-down' : 'fa-angle-up')
@@ -317,5 +320,11 @@
     }
 
     // Run the script.
-    init();
-})();
+    function bootstrap(tries = 1) {
+        if ($)
+            init();
+        else if (tries < 1000)
+            setTimeout(function () {bootstrap(tries++);}, 200);
+    }
+    bootstrap();
+})(jq331);
