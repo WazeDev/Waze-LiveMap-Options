@@ -121,8 +121,9 @@ var jq331 = jQuery.noConflict(true);
     }
 
     function fetchRoutes() {
+        const { state } = W.app.routing.controller.store
         // Does nothing if "from" and "to" haven't been specified yet.
-        if (W.app.store.state.routing && W.app.store.state.routing.from && W.app.store.state.routing.to) {
+        if (state && state.from && state.to) {
             // HACK - Temporarily remove the onAfterItemAdded function, to prevent map from moving.
             W.app.map.fitBounds = function() {};
 
@@ -138,7 +139,7 @@ var jq331 = jQuery.noConflict(true);
                     $('<span>').text('Change routing options'),
                     $('<i>', {class:'fa fa.fa-angle-down fa.fa-angle-up'}).addClass(_settings.collapsed ? 'fa-angle-down' : 'fa-angle-up')
                 ),
-                $('<div>', {class: 'lmo-options-container'}).css({maxHeight:_settings.collapsed ? '0px' : EXPANDED_MAX_HEIGHT}).append(
+                $('<div>', {class: 'lmo-options-container'}).css({maxHeight:_settings.collapsed ? '0px' : EXPANDED_MAX_HEIGHT, marginBottom: '5px'}).append(
                     $('<table>', {class: 'lmo-table'}).append(
                         [['Avoid:',['Tolls','Freeways','Ferries','HOV','Unpaved roads','Long unpaved roads','Difficult turns','U-Turns']], ['Options:',['Hide traffic']]].map(rowItems => {
                             let rowID = rowItems[0].toLowerCase().replace(/[ :]/g,'');
