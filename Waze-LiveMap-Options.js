@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            Waze LiveMap Options
 // @namespace       WazeDev
-// @version         2019.01.30.001
+// @version         2019.03.15.001
 // @description     Adds options to LiveMap to alter the Waze-suggested routes.
 // @author          MapOMatic
 // @include         /^https:\/\/www.waze.com\/.*livemap/
