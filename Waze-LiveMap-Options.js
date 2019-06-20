@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            Waze LiveMap Options
 // @namespace       WazeDev
-// @version         2019.03.15.001
+// @version         2019.06.19.001
 // @description     Adds options to LiveMap to alter the Waze-suggested routes.
 // @author          MapOMatic
 // @include         /^https:\/\/www.waze.com\/.*livemap/
@@ -15,7 +15,6 @@
 /* global W */
 /* global Node */
 /* global jQuery */
-/* global window */
 /* global MutationObserver */
 
 const $ = jQuery.noConflict(true);
@@ -325,7 +324,7 @@ function init() {
 
 // Run the script.
 function bootstrap(tries = 1) {
-    if ($) {
+    if ($ && $('.wm-route-search__spinner').length) {
         init();
     } else if (tries < 1000) {
         setTimeout(() => { bootstrap(tries + 1); }, 200);
