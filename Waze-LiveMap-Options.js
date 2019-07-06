@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            Waze LiveMap Options
 // @namespace       WazeDev
-// @version         2019.06.19.001
+// @version         2019.07.06.001
 // @description     Adds options to LiveMap to alter the Waze-suggested routes.
 // @author          MapOMatic
 // @include         /^https:\/\/www.waze.com\/.*livemap/
@@ -24,14 +24,15 @@ const CSS = [
     '.lmo-options-header { padding-left: 27px; margin-top: 4px; cursor: pointer; color: #59899e; font-size: 11px; font-weight: 600; }',
     '.lmo-options-header i { margin-left: 5px; }',
     // eslint-disable-next-line max-len
-    `.lmo-options-container { padding-left: 27px; padding-right: 12px; max-height: 500px; overflow: hidden; margin-bottom: 5px; transition: max-height ${TRANS_TIME}; -moz-transition: max-height ${TRANS_TIME}; -webkit-transition: max-height ${TRANS_TIME}; -o-transition: max-height ${TRANS_TIME}; }`,
+    `.lmo-options-container { padding-left: 27px; padding-right: 27px; max-height: 500px; overflow: hidden; margin-bottom: 10px; transition: max-height ${TRANS_TIME}; -moz-transition: max-height ${TRANS_TIME}; -webkit-transition: max-height ${TRANS_TIME}; -o-transition: max-height ${TRANS_TIME}; }`,
     '.lmo-table { margin-top: 4px; font-size: 12px; border-collapse: collapse; }',
     '.lmo-table td { padding: 4px 10px 4px 10px; border: 1px solid #ddd; border-radius: 6px; }',
     '.lmo-table-header-text { margin: 0px; font-weight: 600; }',
     '.lmo-control-container { margin-right: 8px; }',
     '.lmo-control-container label { line-height: 18px; vertical-align: text-bottom; }',
     '.lmo-table input[type="checkbox"] { margin-right: 2px; }',
-    '.lmo-table td.lmo-header-cell { padding-left: 4px; padding-right: 4px; }'
+    '.lmo-table td.lmo-header-cell { padding-left: 4px; padding-right: 4px; }',
+    '#lmo-header-avoid { color: #c55; }'
 ].join('\n');
 
 let _fitBounds;
@@ -45,6 +46,8 @@ const _settings = {
     'lmo-u-turns': { checked: false, opposite: true },
     'lmo-hov': { checked: false, opposite: true },
     'lmo-hide-traffic': { checked: false },
+    'lmo-vehicle-type': { value: 'private' },
+    'lmo-allow-all-passes': { checked: false },
     'lmo-day': 'today',
     'lmo-hour': 'now',
     collapsed: false
@@ -134,25 +137,30 @@ function onControlChanged() {
         fetchRoutes();
     } else {
         const isChecked = checked(id);
-        _settings[id].checked = isChecked;
-        if (id === 'lmo-hide-traffic') {
-            if (isChecked) {
-                W.app.geoRssLayer._jamsLayer.remove();
+        if (this.type === 'checkbox') {
+            _settings[id].checked = isChecked;
+            if (id === 'lmo-hide-traffic') {
+                if (isChecked) {
+                    W.app.geoRssLayer._jamsLayer.remove();
+                } else {
+                    W.app.geoRssLayer._jamsLayer.addTo(W.app.map);
+                }
             } else {
-                W.app.geoRssLayer._jamsLayer.addTo(W.app.map);
-            }
-        } else {
-            if (id === 'lmo-long-unpaved-roads') {
-                if (isChecked) {
-                    checked('lmo-unpaved-roads', false);
-                    _settings['lmo-unpaved-roads'].checked = false;
+                if (id === 'lmo-long-unpaved-roads') {
+                    if (isChecked) {
+                        checked('lmo-unpaved-roads', false);
+                        _settings['lmo-unpaved-roads'].checked = false;
+                    }
+                } else if (id === 'lmo-unpaved-roads') {
+                    if (isChecked) {
+                        checked('lmo-long-unpaved-roads', false);
+                        _settings['lmo-long-unpaved-roads'].checked = false;
+                    }
                 }
-            } else if (id === 'lmo-unpaved-roads') {
-                if (isChecked) {
-                    checked('lmo-long-unpaved-roads', false);
-                    _settings['lmo-long-unpaved-roads'].checked = false;
-                }
+                fetchRoutes();
             }
+        } else if (this.type === 'radio') {
+            _settings['lmo-vehicle-type'].value = this.value;
             fetchRoutes();
         }
     }
@@ -169,9 +177,11 @@ function addOptions() {
                 $('<table>', { class: 'lmo-table' }).append(
                     [
                         ['Avoid:', ['Tolls', 'Freeways', 'Ferries', 'HOV', 'Unpaved roads', 'Long unpaved roads', 'Difficult turns', 'U-Turns']],
+                        ['Vehicle Type:', ['Private', 'Taxi', 'Motorcycle']],
+                        ['Passes:', ['Allow all passes']],
                         ['Options:', ['Hide traffic']]
                     ].map(rowItems => {
-                        const rowID = rowItems[0].toLowerCase().replace(/[ :]/g, '');
+                        const rowID = rowItems[0].toLowerCase().replace(/[:]/g, '').replace(/ /g, '-');
                         return $('<tr>', { id: `lmo-row-${rowID}` }).append(
                             $('<td>', { class: 'lmo-header-cell' }).append(
                                 $('<span>', { id: `lmo-header-${rowID}`, class: 'lmo-table-header-text' }).text(rowItems[0])
@@ -180,6 +190,17 @@ function addOptions() {
                                 rowItems[1].map(text => {
                                     const idName = text.toLowerCase().replace(/ /g, '-');
                                     const id = `lmo-${idName}`;
+                                    if (rowID === 'vehicle-type') {
+                                        return $('<span>', { class: 'lmo-control-container' }).append(
+                                            $('<input>', {
+                                                id,
+                                                type: 'radio',
+                                                class: 'lmo-control',
+                                                name: 'lmo-vehicle-type',
+                                                value: idName.toLowerCase()
+                                            }).prop('checked', _settings['lmo-vehicle-type'].value === idName.toLowerCase()), $('<label>', { for: id }).text(text)
+                                        );
+                                    }
                                     return $('<span>', { class: 'lmo-control-container' }).append(
                                         $('<input>', { id, type: 'checkbox', class: 'lmo-control' })
                                             .prop('checked', _settings[id].checked), $('<label>', { for: id }).text(text)
@@ -191,7 +212,7 @@ function addOptions() {
                 )
             )
         );
-        $('#lmo-header-avoid').css({ color: '#c55' });
+
         $('label[for="lmo-u-turns"').attr('title', 'Note: this is not an available setting in the app');
 
         const timeArray = [['Now', 'now']];
@@ -265,6 +286,13 @@ function installHttpRequestInterceptor() {
                 }
                 baseData = baseData.replace(/\?at=0/, `?at=${getDateTimeOffset()}`);
                 url = baseData + encodeURIComponent(options.join(',')) + otherBits;
+                if (checked('lmo-allow-all-passes')) {
+                    url += '&subscription=*';
+                }
+                const vehicleType = _settings['lmo-vehicle-type'].value;
+                if (vehicleType !== 'private') {
+                    url += `&vehicleType=${vehicleType.toUpperCase()}`;
+                }
                 args[0] = url;
             }
             return origFetch.apply(this, args);
